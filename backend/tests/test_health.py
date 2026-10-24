@@ -1,4 +1,5 @@
 import pytest
+import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 
@@ -32,6 +33,42 @@ def test_health_endpoint_structure():
     assert data["database"]["database"] == "document_intelligence"
 
 
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "https://documind-ai-ashy.vercel.app",
+        "http://localhost:5173",
+    ],
+)
+def test_health_endpoint_allows_frontend_origins(origin):
+    response = client.get(
+        "/api/health",
+        headers={"Origin": origin},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == origin
+
+
+def test_document_upload_cors_preflight():
+    response = client.options(
+        "/api/documents/upload",
+        headers={
+            "Origin": "https://documind-ai-ashy.vercel.app",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.headers["access-control-allow-origin"] == (
+        "https://documind-ai-ashy.vercel.app"
+    )
+    assert "POST" in response.headers["access-control-allow-methods"]
+    assert "content-type" in response.headers["access-control-allow-headers"]
+    assert "access-control-allow-credentials" not in response.headers
+
+
 def test_404_error_handling():
     """Verify 404 routes return centralized error format."""
     response = client.get("/api/non-existent-endpoint")
@@ -48,4 +85,3 @@ def test_documents_list_endpoint():
     data = response.json()
     assert "documents" in data
     assert isinstance(data["documents"], list)
-
