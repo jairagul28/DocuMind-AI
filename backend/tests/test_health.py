@@ -32,6 +32,7 @@ def test_health_endpoint_structure(client):
 @pytest.mark.parametrize(
     "origin",
     [
+        "https://documind-ai-platform.vercel.app",
         "https://documind-ai-ashy.vercel.app",
         "http://localhost:5173",
     ],
@@ -50,7 +51,7 @@ def test_document_upload_cors_preflight(client):
     response = client.options(
         "/api/documents/upload",
         headers={
-            "Origin": "https://documind-ai-ashy.vercel.app",
+            "Origin": "https://documind-ai-platform.vercel.app",
             "Access-Control-Request-Method": "POST",
             "Access-Control-Request-Headers": "content-type,x-session-token",
         },
@@ -58,7 +59,7 @@ def test_document_upload_cors_preflight(client):
 
     assert response.status_code == 200
     assert response.headers["access-control-allow-origin"] == (
-        "https://documind-ai-ashy.vercel.app"
+        "https://documind-ai-platform.vercel.app"
     )
     assert "POST" in response.headers["access-control-allow-methods"]
     allowed_headers = response.headers["access-control-allow-headers"].lower()

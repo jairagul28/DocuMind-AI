@@ -21,5 +21,4 @@ services:
       - key: GROQ_MODEL
         value: openai/gpt-oss-20b
       - key: FRONTEND_ORIGIN
-        sync: false
-
+        value: https://documind-ai-platform.vercel.app
