@@ -1,0 +1,43 @@
+AISHA PATEL
+Junior Software Developer & Recent Graduate
+Email: aisha.patel@devgraduate.edu
+Phone: +1 (312) 555-0189
+Location: Chicago, IL
+Portfolio: aishapatel.dev | GitHub: github.com/aishapatel-code
+
+OBJECTIVE
+Motivated Computer Science graduate seeking an Associate Software Engineer role. Eager to contribute foundational skills in Python, React, and MongoDB while building high-performance web applications under senior engineering mentorship.
+
+TECHNICAL SKILLS
+- Programming: Python 3, JavaScript (ES6+), HTML5, CSS3, SQL
+- Web Frameworks: React, FastAPI basics, Express.js, Tailwind CSS
+- Developer Tools: Git, GitHub, VS Code, Postman
+- Databases: MongoDB (basic querying), SQLite, PostgreSQL
+
+EDUCATION
+Bachelor of Science in Computer Science
+University of Illinois Urbana-Champaign (UIUC), Urbana, IL
+Graduation Date: May 2026
+GPA: 3.82 / 4.00 (Dean's List all semesters)
+
+WORK EXPERIENCE
+
+Software Engineering Intern | BrightPath EdTech, Chicago, IL
+June 2025 – August 2025 (3-month summer internship)
+- Assisted backend team in building REST API endpoints using Python and FastAPI for a student quiz platform.
+- Wrote unit tests using pytest, improving test coverage for student profile routes by 18%.
+- Fixed minor UI bugs in the React dashboard under the guidance of senior developers.
+
+ACADEMIC & PERSONAL PROJECTS
+1. CampusEventFinder (Capstone Project, 2025 – 2026):
+   - Full-stack web application enabling university clubs to publish and discover campus events.
+   - Built frontend using React and Tailwind CSS; backend powered by Python and MongoDB.
+   - Implemented real-time event RSVP tracking and calendar export.
+
+2. MarkdownDocReader:
+   - Lightweight browser tool to parse and format markdown notes with code syntax highlighting.
+
+HONORS & ACTIVITIES
+- UIUC Hackathon 2025: 2nd Place Winner (Best Student Tool Category)
+- Member, Women in Computer Science (WCS) Student Chapter
+

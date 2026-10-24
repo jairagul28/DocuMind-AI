@@ -1,0 +1,44 @@
+DAVID CHEN
+Lead Machine Learning Researcher & NLP Specialist
+Location: Boston, MA
+GitHub: github.com/dchen-ai-research
+Google Scholar: scholar.google.com/citations?user=dchen_nlp
+
+PROFESSIONAL SUMMARY
+Distinguished AI and Machine Learning Researcher with 7 years of specialized focus on Natural Language Processing, Transformer architectures, and automated information extraction. Author of 6 peer-reviewed conference publications in ACL and EMNLP. Experienced in translating foundational AI research into production-grade inference pipelines.
+
+AREAS OF EXPERTISE & TECHNICAL SKILLS
+- Core AI/ML: Natural Language Processing, Large Language Models, Token Classification, Entity Recognition, PyTorch, Hugging Face Transformers, JAX
+- Programming: Python, C++, CUDA, R, SQL
+- Data Infrastructure: MongoDB, Apache Kafka, Spark, DuckDB
+- Model Optimization: Quantization (AWQ, GPTQ), vLLM, TensorRT-LLM, Groq LPU acceleration
+
+PROFESSIONAL EXPERIENCE
+
+Principal NLP Research Scientist | CogniTech AI Labs, Boston, MA
+September 2020 – Present
+- Pioneered multi-modal schema extraction models processing scientific publications with 96.8% F1-score.
+- Optimized sequence chunking and attention mechanisms, cutting memory footprint during inference by 40%.
+- Led research collaboration with university partners on mitigating hallucinations in structured LLM extraction.
+
+Senior Research Engineer | Quantix AI, Cambridge, MA
+June 2017 – August 2020
+- Developed proprietary text classification models for financial document risk auditing.
+- Scaled training pipelines across multi-node GPU clusters using PyTorch Distributed and Slurm.
+
+EDUCATION
+Doctor of Philosophy (Ph.D.) in Electrical Engineering & Computer Science
+Massachusetts Institute of Technology (MIT), Cambridge, MA (2013 – 2017)
+Dissertation: "Efficient Context Compression for Deep Neural Language Understanding"
+
+Bachelor of Science in Mathematics and Computer Science
+Carnegie Mellon University, Pittsburgh, PA (2009 – 2013)
+
+KEY PROJECTS
+- OpenSchema-NER: Open-source Named Entity Recognition framework fine-tuned for dense academic texts.
+- DeepDocParser: Layout-aware spatial token classification engine utilizing vision-augmented language models.
+
+PUBLICATIONS & AWARDS
+- Best Paper Award, EMNLP 2022: "Accelerated Structured Extraction from Semi-Structured Corpora"
+- 6 Peer-Reviewed Papers in ACL, EMNLP, and NeurIPS workshops.
+

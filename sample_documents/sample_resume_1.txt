@@ -1,0 +1,40 @@
+ALEXANDER R. MORGAN
+Senior Full-Stack & Machine Learning Engineer
+Email: alex.morgan@example.com | Phone: +1 (555) 019-2834 | Location: San Francisco, CA
+LinkedIn: linkedin.com/in/alexmorgan-dev | GitHub: github.com/alexmorgan
+
+PROFESSIONAL SUMMARY
+Results-driven Senior Full-Stack Engineer with 8+ years of experience architecting high-scale distributed systems, document intelligence pipelines, and real-time AI microservices. Proven expertise in Python (FastAPI), React, MongoDB, and LLM orchestration.
+
+TECHNICAL SKILLS
+- Programming Languages: Python 3.11+, JavaScript (ES6+), TypeScript, SQL, HTML5/CSS3
+- Frameworks & Libraries: FastAPI, React 18, Vite, Node.js, PyMongo, Pydantic, Tailwind CSS
+- Databases & Storage: MongoDB, PostgreSQL, Redis, Elasticsearch
+- AI & NLP: Groq API, LangChain, Hugging Face Transformers, PyTorch, OpenAI API
+- Cloud & DevOps: AWS (EC2, S3, Lambda), Docker, GitHub Actions, CI/CD, Linux
+
+PROFESSIONAL EXPERIENCE
+Senior Machine Learning Engineer | CloudVision AI Inc., San Francisco, CA
+March 2021 – Present
+- Architected enterprise document ingestion pipeline processing 250,000+ financial PDFs daily with 99.4% parsing accuracy.
+- Integrated Groq and Llama 3 models reducing document classification latency from 4.2s to 320ms.
+- Built reactive frontend monitoring dashboards using React, Vite, and Tailwind CSS.
+- Optimized MongoDB indexing and sharding strategies, reducing query latency by 45%.
+
+Full-Stack Software Developer | DataFlow Technologies, Austin, TX
+July 2018 – February 2021
+- Developed RESTful microservices using FastAPI, Python, and MongoDB.
+- Created interactive data visualization tools using React and Lucide icons.
+- Engineered automated regression test suites maintaining 92% code coverage.
+
+EDUCATION
+Master of Science in Computer Science (Artificial Intelligence specialization)
+Stanford University, Stanford, CA (2016 – 2018)
+
+Bachelor of Science in Software Engineering (Summa Cum Laude)
+University of California, Berkeley (2012 – 2016)
+
+KEY PROJECTS
+1. DocuMind AI Platform: High-throughput document intelligence service utilizing FastAPI, React, and Groq LLM API.
+2. FastVector Search: Lightweight vector search engine built on Python and NumPy for semantic document deduplication.
+

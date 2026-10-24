@@ -1,0 +1,20 @@
+Full Name: [TO BE FILLED]
+
+Register Number: [TO BE FILLED]
+
+College Name: [TO BE FILLED]
+
+Department: [TO BE FILLED]
+
+Year of Study / Graduation Year: [TO BE FILLED]
+
+Mobile Number: [TO BE FILLED]
+
+Email Address: [TO BE FILLED]
+
+Task Chosen: Task 2 — AI-Powered Document Intelligence Platform
+
+Live Demo URL: [ADD AFTER DEPLOYMENT]
+
+GitHub Repository URL: [OPTIONAL]
+

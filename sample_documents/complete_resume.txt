@@ -1,0 +1,56 @@
+PRIYA SHARMA
+Senior Full-Stack Cloud Architect
+Email: priya.sharma@techsphere.io
+Phone: +1 (415) 890-2341
+Location: Seattle, WA
+LinkedIn: linkedin.com/in/priyasharma-cloud
+GitHub: github.com/priyasharma-dev
+
+PROFESSIONAL SUMMARY
+Senior Cloud Architect and Full-Stack Engineer with over 9 years of experience designing resilient distributed systems, event-driven microservices, and AI-powered document intelligence pipelines. Proven track record leading cross-functional engineering teams, architecting zero-downtime multi-region cloud infrastructures, and driving scalable developer platforms.
+
+TECHNICAL SKILLS
+- Programming Languages: Python, TypeScript, JavaScript, Go, SQL, Bash
+- Frameworks & Libraries: FastAPI, React, Next.js, Node.js, Express, PyTorch, Tailwind CSS
+- Cloud & DevOps: AWS (EKS, Lambda, S3, RDS, CloudFront), Docker, Kubernetes, Terraform, GitHub Actions
+- Databases: MongoDB, PostgreSQL, Redis, Elasticsearch
+- AI & LLM Systems: Groq API, LangChain, Hugging Face, Retrieval-Augmented Generation (RAG), Vector Embeddings
+- System Design: RESTful APIs, GraphQL, Microservices, Event Sourcing, Distributed Caching
+
+WORK EXPERIENCE
+
+Lead Cloud Solutions Architect | TechSphere Solutions, Seattle, WA
+January 2021 – Present
+- Designed and delivered enterprise-scale document ingestion platform processing 450,000+ unstructured documents daily with 99.95% uptime.
+- Spearheaded integration of high-speed Groq LLM inference pipelines, reducing end-to-end semantic classification latency by 68%.
+- Mentored a distributed team of 14 senior engineers across frontend, backend, and platform reliability disciplines.
+- Transitioned on-premise infrastructure to AWS Kubernetes clusters, saving $320,000 annually in compute overhead.
+
+Senior Full-Stack Engineer | Apex Data Systems, San Francisco, CA
+June 2017 – December 2020
+- Built responsive analytical dashboards using React, Vite, and Tailwind CSS serving 120,000+ daily active enterprise users.
+- Developed asynchronous backend services using FastAPI and PyMongo, achieving sub-40ms P99 response times.
+- Implemented robust centralized authentication, role-based access control (RBAC), and automated audit logs.
+
+Software Engineer | NexaCorp Technologies, Austin, TX
+August 2015 – May 2017
+- Developed RESTful API microservices with Python and PostgreSQL.
+- Authored automated unit and integration test suites achieving 94% test coverage across core payment workflows.
+
+EDUCATION
+Master of Science in Computer Science
+University of Washington, Seattle, WA (2013 – 2015)
+
+Bachelor of Technology in Information Technology
+National Institute of Technology, Trichy (2009 – 2013)
+
+KEY PROJECTS
+1. Enterprise Document Brain: High-throughput document intelligence service utilizing FastAPI, MongoDB, PyMuPDF, and Groq LLM API.
+2. FastVector Cache: Distributed low-latency embedding cache built on Go and Redis for semantic document deduplication.
+3. KubeAutoScaler: Open-source Kubernetes operator automatically resizing cluster workloads based on queue depth metrics.
+
+CERTIFICATIONS
+- AWS Certified Solutions Architect – Professional (SAP-C02)
+- Certified Kubernetes Administrator (CKA)
+- MongoDB Certified Developer Associate
+
