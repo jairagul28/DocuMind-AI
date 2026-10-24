@@ -45,7 +45,7 @@ export default function AnalysisHistoryView({
 
   const handleDelete = async (docId, e) => {
     e.stopPropagation();
-    if (!window.confirm('Are you sure you want to delete this document from the database?')) {
+    if (!window.confirm('Are you sure you want to delete this document from your session?')) {
       return;
     }
 
@@ -86,7 +86,7 @@ export default function AnalysisHistoryView({
             Document Intelligence History
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Persisted documents in MongoDB <code className="text-teal-400 font-mono text-xs">document_intelligence.documents</code>.
+            Private to this browser session. Temporary documents may be cleared when the service restarts.
           </p>
         </div>
 
@@ -128,7 +128,7 @@ export default function AnalysisHistoryView({
         <div className="glass-panel rounded-2xl p-12 border border-slate-800 text-center">
           <div className="w-10 h-10 border-3 border-teal-500/30 border-t-teal-400 rounded-full animate-spin mx-auto mb-4" />
           <p className="text-sm font-medium text-slate-200">
-            Querying MongoDB <span className="font-mono text-teal-400">document_intelligence.documents</span>...
+            Loading your private document history...
           </p>
         </div>
       )}

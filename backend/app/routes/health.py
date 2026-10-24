@@ -32,6 +32,9 @@ def get_health() -> HealthResponse:
         version=settings.VERSION,
         timestamp=datetime.now(timezone.utc).isoformat(),
         python_version=f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
-        database=db_status,
+        database={
+            "connected": is_db_ok,
+            "fallback_active": db_status.get("fallback_active", not is_db_ok),
+        },
         groq_status=groq_status,
     )

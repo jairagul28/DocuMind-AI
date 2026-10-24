@@ -3,11 +3,10 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 from bson import ObjectId
-from bson.errors import InvalidId
 from pymongo import MongoClient
 from pymongo.collection import Collection
 from pymongo.database import Database
-from pymongo.errors import ConnectionFailure, PyMongoError, ServerSelectionTimeoutError
+from pymongo.errors import ConnectionFailure, ServerSelectionTimeoutError
 
 from app.config import settings
 
@@ -26,7 +25,7 @@ class DatabaseManager:
     def connect(self) -> None:
         """Initialize MongoDB client and create collection indexes."""
         try:
-            logger.info("Connecting to MongoDB: %s", settings.MONGODB_URI)
+            logger.info("Connecting to configured MongoDB server.")
             self.client = MongoClient(
                 settings.MONGODB_URI,
                 serverSelectionTimeoutMS=settings.MONGODB_TIMEOUT_MS,
@@ -39,12 +38,11 @@ class DatabaseManager:
             self._setup_collections()
         except (ConnectionFailure, ServerSelectionTimeoutError) as err:
             logger.warning(
-                "MongoDB unavailable at %s (%s). Running with memory-backed fallback.",
-                settings.MONGODB_URI,
-                err,
+                "MongoDB unavailable (%s). Running with memory-backed fallback.",
+                type(err).__name__,
             )
         except Exception as err:
-            logger.error("Error connecting to MongoDB: %s", err)
+            logger.error("Error connecting to MongoDB (%s).", type(err).__name__)
 
     def _setup_collections(self) -> None:
         """Create initial indexes for the documents collection."""
@@ -55,9 +53,12 @@ class DatabaseManager:
             docs_coll.create_index("upload_timestamp")
             docs_coll.create_index("processing_status")
             docs_coll.create_index("filename")
+            docs_coll.create_index("owner_session")
             logger.info("Ensured 'documents' collection indexes.")
         except Exception as err:
-            logger.warning("Could not create collection indexes: %s", err)
+            logger.warning(
+                "Could not create collection indexes (%s).", type(err).__name__
+            )
 
     def close(self) -> None:
         """Close MongoDB connection pool."""
@@ -91,7 +92,7 @@ class DatabaseManager:
                 "connected": False,
                 "database": settings.MONGODB_DB,
                 "uri": settings.MONGODB_URI,
-                "error": f"Connection timed out: {err}",
+                "error": f"Connection timed out ({type(err).__name__}).",
                 "fallback_active": True,
                 "fallback_documents_count": len(self._fallback_store),
             }
@@ -116,10 +117,11 @@ class DatabaseManager:
 
     # --- Document CRUD Operations ---
 
-    def insert_document(self, doc_data: Dict[str, Any]) -> str:
+    def insert_document(self, doc_data: Dict[str, Any], owner_session: str) -> str:
         """Insert document record into MongoDB or fallback store."""
         doc_id = doc_data.get("id") or str(uuid.uuid4())
         doc_data["id"] = doc_id
+        doc_data["owner_session"] = owner_session
 
         coll = self.get_documents_collection()
         if coll is not None:
@@ -129,95 +131,135 @@ class DatabaseManager:
                 coll.insert_one(mongo_doc)
                 logger.info("Inserted document %s into MongoDB.", doc_id)
             except Exception as err:
-                logger.warning("MongoDB insert failed (%s). Saving to fallback cache.", err)
+                logger.warning(
+                    "MongoDB insert failed (%s). Saving to fallback cache.",
+                    type(err).__name__,
+                )
 
         # Keep fallback cache updated
         self._fallback_store[doc_id] = doc_data.copy()
         return doc_id
 
-    def get_document(self, doc_id: str) -> Optional[Dict[str, Any]]:
+    def get_document(
+        self, doc_id: str, owner_session: str
+    ) -> Optional[Dict[str, Any]]:
         """Retrieve a single document by ID from MongoDB or fallback store."""
         coll = self.get_documents_collection()
         if coll is not None:
             try:
-                # Try query by _id or id
-                query: Dict[str, Any] = {"$or": [{"_id": doc_id}, {"id": doc_id}]}
+                id_query: List[Dict[str, Any]] = [
+                    {"_id": doc_id},
+                    {"id": doc_id},
+                ]
                 if ObjectId.is_valid(doc_id):
-                    query["$or"].append({"_id": ObjectId(doc_id)})
+                    id_query.append({"_id": ObjectId(doc_id)})
 
-                res = coll.find_one(query)
+                res = coll.find_one(
+                    {"$and": [{"$or": id_query}, {"owner_session": owner_session}]}
+                )
                 if res:
                     res["id"] = str(res.get("_id", doc_id))
                     if "_id" in res:
                         del res["_id"]
                     return res
             except Exception as err:
-                logger.warning("MongoDB find failed: %s", err)
+                logger.warning("MongoDB find failed (%s).", type(err).__name__)
 
         # Check fallback store
-        if doc_id in self._fallback_store:
-            return self._fallback_store[doc_id].copy()
+        doc = self._fallback_store.get(doc_id)
+        if doc is not None and doc.get("owner_session") == owner_session:
+            return doc.copy()
 
         return None
 
-    def list_documents(self) -> List[Dict[str, Any]]:
+    def list_documents(self, owner_session: str) -> List[Dict[str, Any]]:
         """List documents sorted by upload_timestamp descending."""
         coll = self.get_documents_collection()
         if coll is not None:
             try:
-                docs = list(coll.find().sort("upload_timestamp", -1).limit(100))
+                docs = list(
+                    coll.find({"owner_session": owner_session})
+                    .sort("upload_timestamp", -1)
+                    .limit(100)
+                )
                 results = []
                 for d in docs:
                     d["id"] = str(d.pop("_id", d.get("id", "")))
                     results.append(d)
                 return results
             except Exception as err:
-                logger.warning("MongoDB list failed: %s", err)
+                logger.warning("MongoDB list failed (%s).", type(err).__name__)
 
         # Return fallback documents sorted descending
-        fallback_docs = list(self._fallback_store.values())
+        fallback_docs = [
+            doc
+            for doc in self._fallback_store.values()
+            if doc.get("owner_session") == owner_session
+        ]
         fallback_docs.sort(key=lambda d: d.get("upload_timestamp", ""), reverse=True)
         return [d.copy() for d in fallback_docs]
 
-    def update_document(self, doc_id: str, updates: Dict[str, Any]) -> bool:
+    def update_document(
+        self, doc_id: str, owner_session: str, updates: Dict[str, Any]
+    ) -> bool:
         """Update fields on an existing document."""
         updated = False
         coll = self.get_documents_collection()
         if coll is not None:
             try:
-                query: Dict[str, Any] = {"$or": [{"_id": doc_id}, {"id": doc_id}]}
+                id_query: List[Dict[str, Any]] = [
+                    {"_id": doc_id},
+                    {"id": doc_id},
+                ]
                 if ObjectId.is_valid(doc_id):
-                    query["$or"].append({"_id": ObjectId(doc_id)})
+                    id_query.append({"_id": ObjectId(doc_id)})
 
+                query = {
+                    "$and": [
+                        {"$or": id_query},
+                        {"owner_session": owner_session},
+                    ]
+                }
                 res = coll.update_one(query, {"$set": updates})
                 if res.matched_count > 0:
                     updated = True
             except Exception as err:
-                logger.warning("MongoDB update failed: %s", err)
+                logger.warning("MongoDB update failed (%s).", type(err).__name__)
 
-        if doc_id in self._fallback_store:
-            self._fallback_store[doc_id].update(updates)
+        doc = self._fallback_store.get(doc_id)
+        if doc is not None and doc.get("owner_session") == owner_session:
+            doc.update(updates)
             updated = True
 
         return updated
 
-    def delete_document(self, doc_id: str) -> bool:
+    def delete_document(self, doc_id: str, owner_session: str) -> bool:
         """Delete document by ID from MongoDB and fallback store."""
         deleted = False
         coll = self.get_documents_collection()
         if coll is not None:
             try:
-                query: Dict[str, Any] = {"$or": [{"_id": doc_id}, {"id": doc_id}]}
+                id_query: List[Dict[str, Any]] = [
+                    {"_id": doc_id},
+                    {"id": doc_id},
+                ]
                 if ObjectId.is_valid(doc_id):
-                    query["$or"].append({"_id": ObjectId(doc_id)})
+                    id_query.append({"_id": ObjectId(doc_id)})
 
+                query = {
+                    "$and": [
+                        {"$or": id_query},
+                        {"owner_session": owner_session},
+                    ]
+                }
                 res = coll.delete_one(query)
                 if res.deleted_count > 0:
                     deleted = True
             except Exception as err:
-                logger.warning("MongoDB delete failed: %s", err)
+                logger.warning("MongoDB delete failed (%s).", type(err).__name__)
 
-        if doc_id in self._fallback_store:
+        doc = self._fallback_store.get(doc_id)
+        if doc is not None and doc.get("owner_session") == owner_session:
             del self._fallback_store[doc_id]
             deleted = True
 

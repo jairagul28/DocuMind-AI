@@ -267,24 +267,24 @@ You MUST respond with a single, strictly valid JSON object conforming to this ex
                 break
             except RateLimitError as rle:
                 last_error = rle
-                logger.warning("Groq rate limit encountered: %s", rle)
+                logger.warning("Groq rate limit encountered.")
                 if attempt < max_retries:
                     time.sleep(2.5 * (attempt + 1))
             except APIConnectionError as ace:
                 last_error = ace
-                logger.warning("Groq network connection error: %s", ace)
+                logger.warning("Groq network connection error.")
                 if attempt < max_retries:
                     time.sleep(2.0)
             except APIStatusError as ase:
                 last_error = ase
-                logger.error("Groq API status error HTTP %s: %s", ase.status_code, ase.message)
+                logger.error("Groq API status error HTTP %s.", ase.status_code)
                 raise GroqServiceError(
                     f"Groq API returned HTTP {ase.status_code}: {ase.message}",
                     code="GROQ_STATUS_ERROR",
                 )
             except Exception as ex:
                 last_error = ex
-                logger.error("Unexpected error invoking Groq: %s", ex)
+                logger.error("Unexpected Groq invocation error (%s).", type(ex).__name__)
                 if attempt < max_retries:
                     time.sleep(1.5)
 
@@ -310,7 +310,7 @@ You MUST respond with a single, strictly valid JSON object conforming to this ex
 
             parsed_data = json.loads(cleaned_json_str)
         except json.JSONDecodeError as jde:
-            logger.error("Groq response was not valid JSON: %s\nRaw output:\n%s", jde, raw_response_text)
+            logger.error("Groq model returned invalid JSON.")
             raise GroqServiceError(
                 f"Groq model did not return valid JSON: {jde}",
                 code="INVALID_JSON_RESPONSE",
@@ -342,8 +342,8 @@ You MUST respond with a single, strictly valid JSON object conforming to this ex
         # Validate with Pydantic
         try:
             structured_resume = StructuredResume(**parsed_data)
-        except ValidationError as ve:
-            logger.warning("Pydantic validation coerced fields: %s", ve)
+        except ValidationError:
+            logger.warning("Groq response required schema validation coercion.")
             # Create graceful schema
             structured_resume = StructuredResume.model_validate(parsed_data, strict=False)
 
@@ -373,4 +373,3 @@ You MUST respond with a single, strictly valid JSON object conforming to this ex
 
 
 groq_service = GroqService()
-

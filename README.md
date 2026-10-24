@@ -18,9 +18,9 @@ DocuMind AI is an enterprise document intelligence and semantic extraction platf
 - **Backend:** Python 3.11+, FastAPI, Uvicorn, Pydantic v2
 - **PDF Extraction Engine:** PyMuPDF (`fitz` 1.25.5)
 - **Inference Engine:** Groq Cloud Python SDK (`groq` 1.7.0) with model `openai/gpt-oss-20b`
-- **Database:** MongoDB 7.0 (local) / MongoDB Atlas (production) with PyMongo
-- **Testing:** Pytest (24 automated tests), HTTPX TestClient
-- **Deployment:** Vercel (Frontend SPA) + Render (Backend Web Service) + MongoDB Atlas (Cloud Database)
+- **Storage:** Anonymous-session-scoped documents, held temporarily in the backend's in-memory fallback on Render
+- **Testing:** Pytest, HTTPX TestClient
+- **Deployment:** Vercel (Frontend SPA) + Render (Backend Web Service)
 - **No Docker Required**
 
 ---
@@ -37,7 +37,8 @@ Document intelligence/
 │   │   ├── routes/
 │   │   │   ├── __init__.py
 │   │   │   ├── documents.py       # Upload, list, get, delete, analyze & sample routes
-│   │   │   └── health.py          # GET /api/health cluster status probe
+│   │   │   ├── health.py          # GET /api/health cluster status probe
+│   │   │   └── session.py         # POST /api/session anonymous bearer session
 │   │   ├── services/
 │   │   │   ├── __init__.py
 │   │   │   ├── extractor.py       # PyMuPDF PDF parser & UTF-8 TXT decoder
@@ -45,6 +46,7 @@ Document intelligence/
 │   │   │   └── scoring.py         # Deterministic completeness scoring (5 required sections)
 │   │   ├── __init__.py
 │   │   ├── config.py              # Settings loader using python-dotenv
+│   │   ├── sessions.py            # Signed anonymous session validation
 │   │   ├── database.py            # PyMongo client manager, index setup & resilient fallback store
 │   │   ├── errors.py              # Centralized exception handlers (AppException, Starlette HTTP)
 │   │   └── main.py                # FastAPI app factory, CORS middleware & lifespan manager
@@ -115,7 +117,8 @@ Document intelligence/
 - **PyMuPDF (`fitz`) Text Extraction:** Extracts readable text preserving layout and structure.
 - Guardrails for empty files, corrupted PDFs, encrypted/password-protected PDFs, and scanned/image-only documents.
 - Pre-built fictional test resumes (Priya Sharma, David Chen, Aisha Patel) directly selectable in the UI.
-- Full MongoDB persistence with collection indexing and fail-safe local fallback store.
+- Private, anonymous browser sessions with server-enforced document ownership.
+- Session-scoped in-memory document storage on Render; temporary documents can disappear when the service restarts.
 - Endpoints: `POST /api/documents/upload`, `GET /api/documents`, `GET /api/documents/{id}`, `DELETE /api/documents/{id}`.
 
 ### Phase 3: Groq LLM Intelligence Engine
@@ -148,7 +151,7 @@ Document intelligence/
 - Cloud deployment configuration:
   - `frontend/vercel.json` for Vercel SPA routing.
   - `render.yaml` for Render backend web service.
-  - MongoDB Atlas configuration instructions.
+  - Anonymous session isolation and temporary storage notes.
 - Complete `TECHNICAL_EXPLANATION.md` and `candidate_details.txt`.
 - Submission packaging script (`package_submission.sh`).
 
@@ -253,19 +256,16 @@ backend/tests/test_scoring.py::test_uncertain_field_disqualifies_from_present PA
    - **Health Check Path:** `/api/health`
 4. Add Environment Variables:
    - `PYTHON_VERSION`: `3.11.9`
-   - `MONGODB_URI`: `mongodb+srv://<username>:<password>@cluster.mongodb.net/document_intelligence?retryWrites=true&w=majority`
-   - `MONGODB_DB`: `document_intelligence`
    - `GROQ_API_KEY`: `gsk_YourPrivateGroqApiKeyHere`
    - `GROQ_MODEL`: `openai/gpt-oss-20b`
-   - `FRONTEND_ORIGIN`: `https://your-vercel-frontend-url.vercel.app`
 5. Click **Create Web Service**.
 
-### C. Configure MongoDB Atlas (Production Database)
-1. Sign in to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
-2. Create a free shared cluster (M0 sandbox).
-3. Under **Database Access**, create a user with read/write privileges.
-4. Under **Network Access**, add IP `0.0.0.0/0` (allow access from anywhere) to allow Render instances to connect.
-5. In **Clusters > Connect > Drivers**, copy the connection string and paste it into Render's `MONGODB_URI`.
+### C. Anonymous Sessions and Temporary Storage
+
+- The frontend requests an anonymous signed session token from `POST /api/session` and keeps it in browser `sessionStorage`.
+- Document requests send the token in the `X-Session-Token` header. The backend checks ownership for every document read, analysis, list, and delete.
+- CORS explicitly allows the production Vercel origin and local Vite development origin; no cookie or credential configuration is required.
+- No MongoDB Atlas or new environment variables are required. On Render, temporary documents may be lost when the service restarts or its in-memory storage is cleared.
 
 ---
 
@@ -290,3 +290,4 @@ backend/tests/test_scoring.py::test_uncertain_field_disqualifies_from_present PA
 1. **Scanned / Handwritten Documents:** PyMuPDF extracts digital text layers embedded in PDFs. For pure image scans (with no digital text), the platform detects this condition and warns that OCR is required.
 2. **Groq Model Availability:** The platform is configured for `openai/gpt-oss-20b` and includes automated fallback to standard Groq models (`llama-3.3-70b-versatile`, `llama-3.1-8b-instant`) if custom endpoints are ever suspended.
 3. **Local MongoDB:** When running on machines without local MongoDB running on port 27017, the application operates in resilient degraded mode with in-memory caching until MongoDB is started.
+4. **Anonymous browser sessions:** Session tokens expire after 24 hours and are signed with a process-local key. A Render restart invalidates existing sessions and may clear temporary documents; session data is not backed up or shared across backend instances.

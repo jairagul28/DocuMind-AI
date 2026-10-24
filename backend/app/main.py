@@ -8,6 +8,7 @@ from app.database import db_manager
 from app.errors import register_error_handlers
 from app.routes.documents import router as documents_router
 from app.routes.health import router as health_router
+from app.routes.session import router as session_router
 
 # Configure logging
 logging.basicConfig(
@@ -51,10 +52,11 @@ def create_app() -> FastAPI:
         ],
         allow_credentials=False,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["*"],
+        allow_headers=["Accept", "Content-Type", "X-Session-Token"],
     )
 
     # Include Routers
+    app.include_router(session_router)
     app.include_router(health_router)
     app.include_router(documents_router)
 

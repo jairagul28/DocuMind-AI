@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import ValidationError
 
 from app.database import db_manager
@@ -16,6 +16,7 @@ from app.models.document import (
 )
 from app.services.extractor import ExtractionError, process_document_buffer
 from app.services.groq_service import GroqServiceError, groq_service
+from app.sessions import get_session_id
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB limit
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_document(
     file: UploadFile = File(...),
+    session_id: str = Depends(get_session_id),
 ) -> Dict[str, Any]:
     """
     Upload and extract text from a PDF or TXT document (Max: 10 MB).
@@ -51,7 +53,7 @@ async def upload_document(
     try:
         content = await file.read()
     except Exception as err:
-        logger.error("Failed to read upload stream: %s", err)
+        logger.error("Failed to read upload stream (%s).", type(err).__name__)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Failed to read uploaded file: {err}",
@@ -83,10 +85,12 @@ async def upload_document(
             detail=f"Extraction error: {exc.message}",
         )
     except Exception as exc:
-        logger.exception("Unexpected error during document processing: %s", exc)
+        logger.error(
+            "Unexpected document processing error (%s).", type(exc).__name__
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Internal extraction error: {str(exc)}",
+            detail="An internal document extraction error occurred.",
         )
 
     doc_id = str(uuid.uuid4())
@@ -109,7 +113,7 @@ async def upload_document(
     }
 
     # 4. Save to MongoDB
-    db_manager.insert_document(doc_payload)
+    db_manager.insert_document(doc_payload, owner_session=session_id)
 
     # Return summary response
     preview_length = 1200
@@ -138,14 +142,15 @@ async def upload_document(
 
 
 @router.get("", response_model=Dict[str, Any])
-def list_documents() -> Dict[str, Any]:
+def list_documents(session_id: str = Depends(get_session_id)) -> Dict[str, Any]:
     """Retrieve all uploaded documents ordered by timestamp descending."""
     try:
-        docs = db_manager.list_documents()
+        docs = db_manager.list_documents(owner_session=session_id)
         # Sanitize text preview to avoid oversized lists
         summarized_docs = []
         for d in docs:
             item = d.copy()
+            item.pop("owner_session", None)
             full_text = item.pop("extracted_text", "")
             item["text_snippet"] = full_text[:200] + ("..." if len(full_text) > 200 else "")
             summarized_docs.append(item)
@@ -156,15 +161,18 @@ def list_documents() -> Dict[str, Any]:
             "documents": summarized_docs,
         }
     except Exception as err:
-        logger.error("Failed to query documents list: %s", err)
+        logger.error("Failed to query documents list (%s).", type(err).__name__)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Database query error: {str(err)}",
+            detail="Database query error.",
         )
 
 
 @router.get("/{document_id}", response_model=Dict[str, Any])
-def get_document(document_id: str) -> Dict[str, Any]:
+def get_document(
+    document_id: str,
+    session_id: str = Depends(get_session_id),
+) -> Dict[str, Any]:
     """Retrieve a single document by ID."""
     if not document_id or len(document_id.strip()) == 0:
         raise HTTPException(
@@ -172,10 +180,11 @@ def get_document(document_id: str) -> Dict[str, Any]:
             detail="A valid document ID is required.",
         )
 
-    doc = db_manager.get_document(document_id.strip())
+    doc = db_manager.get_document(document_id.strip(), owner_session=session_id)
     if not doc:
         raise DocumentNotFoundError(document_id)
 
+    doc.pop("owner_session", None)
     return {
         "success": True,
         "document": doc,
@@ -183,7 +192,10 @@ def get_document(document_id: str) -> Dict[str, Any]:
 
 
 @router.delete("/{document_id}", response_model=Dict[str, Any])
-def delete_document(document_id: str) -> Dict[str, Any]:
+def delete_document(
+    document_id: str,
+    session_id: str = Depends(get_session_id),
+) -> Dict[str, Any]:
     """Delete a document by ID."""
     if not document_id or len(document_id.strip()) == 0:
         raise HTTPException(
@@ -191,7 +203,9 @@ def delete_document(document_id: str) -> Dict[str, Any]:
             detail="A valid document ID is required.",
         )
 
-    deleted = db_manager.delete_document(document_id.strip())
+    deleted = db_manager.delete_document(
+        document_id.strip(), owner_session=session_id
+    )
     if not deleted:
         raise DocumentNotFoundError(document_id)
 
@@ -206,13 +220,14 @@ def delete_document(document_id: str) -> Dict[str, Any]:
 def analyze_document_endpoint(
     document_id: str,
     request: AnalysisRequest,
+    session_id: str = Depends(get_session_id),
 ) -> Dict[str, Any]:
     """
     Run Groq LLM intelligence analysis on an uploaded document.
     Generates AI summary, extracts structured JSON entities, calculates completeness,
     and updates document in MongoDB.
     """
-    doc = db_manager.get_document(document_id)
+    doc = db_manager.get_document(document_id, owner_session=session_id)
     if not doc:
         raise DocumentNotFoundError(document_id)
 
@@ -229,22 +244,25 @@ def analyze_document_endpoint(
             request=request,
         )
     except GroqServiceError as gse:
-        logger.error("Groq analysis failed: %s (%s)", gse.message, gse.code)
+        logger.error("Groq analysis failed with code %s.", gse.code)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Groq AI error: {gse.message}",
         )
     except Exception as exc:
-        logger.exception("Unexpected error during document analysis: %s", exc)
+        logger.error(
+            "Unexpected document analysis error (%s).", type(exc).__name__
+        )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Analysis pipeline error: {str(exc)}",
+            detail="An internal document analysis error occurred.",
         )
 
     # Update document in MongoDB
     analysis_dict = analysis_result.model_dump()
     db_manager.update_document(
         doc_id=document_id,
+        owner_session=session_id,
         updates={
             "processing_status": "analyzed",
             "analysis": analysis_dict,
@@ -291,7 +309,10 @@ def list_sample_resumes() -> Dict[str, Any]:
 
 
 @router.post("/samples/load/{sample_key}", response_model=Dict[str, Any])
-def load_sample_document(sample_key: str) -> Dict[str, Any]:
+def load_sample_document(
+    sample_key: str,
+    session_id: str = Depends(get_session_id),
+) -> Dict[str, Any]:
     """Directly stage one of the 3 fictional sample resumes into the system."""
     sample_map = {
         "complete": ("sample_documents/sample_resume_complete.pdf", "Priya_Sharma_Resume.pdf"),
@@ -347,7 +368,7 @@ def load_sample_document(sample_key: str) -> Dict[str, Any]:
         "analysis": None,
     }
 
-    db_manager.insert_document(doc_payload)
+    db_manager.insert_document(doc_payload, owner_session=session_id)
 
     return {
         "success": True,

@@ -31,7 +31,7 @@ def extract_text_from_pdf(file_bytes: bytes, filename: str) -> Dict[str, Any]:
     try:
         doc = fitz.open(stream=file_bytes, filetype="pdf")
     except Exception as err:
-        logger.warning("Corrupted or unreadable PDF: %s (%s)", filename, err)
+        logger.warning("Corrupted or unreadable PDF: %s (%s)", filename, type(err).__name__)
         raise ExtractionError(
             f"Unable to read PDF file '{filename}'. The file appears corrupted or not in standard PDF format.",
             code="CORRUPTED_PDF",
@@ -62,7 +62,12 @@ def extract_text_from_pdf(file_bytes: bytes, filename: str) -> Dict[str, Any]:
             total_chars += len(cleaned_text)
             extracted_pages.append(cleaned_text)
         except Exception as page_err:
-            logger.warning("Error reading page %d of %s: %s", page_idx + 1, filename, page_err)
+            logger.warning(
+                "Error reading page %d of %s (%s).",
+                page_idx + 1,
+                filename,
+                type(page_err).__name__,
+            )
             extracted_pages.append("")
 
     doc.close()
@@ -162,4 +167,3 @@ def process_document_buffer(
         f"Unsupported file format for '{filename}'. Supported types are PDF (.pdf) and TXT (.txt).",
         code="UNSUPPORTED_FORMAT",
     )
-

@@ -4,6 +4,68 @@
  */
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+const SESSION_STORAGE_KEY = 'documind_session_token';
+let sessionTokenRequest;
+
+async function createSessionToken() {
+  const response = await fetch(`${API_BASE_URL}/api/session`, { method: 'POST' });
+  if (!response.ok) {
+    throw new Error(`Unable to start a private session (HTTP ${response.status})`);
+  }
+
+  const data = await response.json();
+  if (typeof data.session_token !== 'string' || !data.session_token) {
+    throw new Error('The backend did not return a valid session token');
+  }
+
+  try {
+    window.sessionStorage.setItem(SESSION_STORAGE_KEY, data.session_token);
+  } catch {
+    throw new Error('Browser session storage is unavailable');
+  }
+  return data.session_token;
+}
+
+async function getSessionToken() {
+  let storedToken;
+  try {
+    storedToken = window.sessionStorage.getItem(SESSION_STORAGE_KEY);
+  } catch {
+    throw new Error('Browser session storage is unavailable');
+  }
+  if (storedToken) return storedToken;
+
+  if (!sessionTokenRequest) {
+    sessionTokenRequest = createSessionToken().finally(() => {
+      sessionTokenRequest = undefined;
+    });
+  }
+  return sessionTokenRequest;
+}
+
+async function fetchWithSession(path, options = {}) {
+  const send = async (token) => {
+    const headers = new Headers(options.headers || {});
+    headers.set('X-Session-Token', token);
+    return fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+  };
+
+  let token = await getSessionToken();
+  let response = await send(token);
+  if (response.status !== 401) return response;
+
+  try {
+    if (window.sessionStorage.getItem(SESSION_STORAGE_KEY) === token) {
+      window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    }
+  } catch {
+    throw new Error('Browser session storage is unavailable');
+  }
+
+  token = await getSessionToken();
+  response = await send(token);
+  return response;
+}
 
 export async function fetchHealth() {
   const startTime = performance.now();
@@ -44,7 +106,7 @@ export async function uploadDocument(file) {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+    const response = await fetchWithSession('/api/documents/upload', {
       method: 'POST',
       body: formData,
     });
@@ -70,7 +132,7 @@ export async function uploadDocument(file) {
 
 export async function fetchDocuments() {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/documents`, {
+    const response = await fetchWithSession('/api/documents', {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -104,7 +166,7 @@ export async function fetchDocuments() {
 
 export async function fetchDocumentById(documentId) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}`, {
+    const response = await fetchWithSession(`/api/documents/${documentId}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -133,7 +195,7 @@ export async function fetchDocumentById(documentId) {
 
 export async function deleteDocumentById(documentId) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}`, {
+    const response = await fetchWithSession(`/api/documents/${documentId}`, {
       method: 'DELETE',
       headers: {
         'Accept': 'application/json',
@@ -162,7 +224,7 @@ export async function deleteDocumentById(documentId) {
 
 export async function analyzeDocument(documentId, config) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/documents/${documentId}/analyze`, {
+    const response = await fetchWithSession(`/api/documents/${documentId}/analyze`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -209,7 +271,7 @@ export async function fetchSampleList() {
 
 export async function loadSampleDocument(sampleKey) {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/documents/samples/load/${sampleKey}`, {
+    const response = await fetchWithSession(`/api/documents/samples/load/${sampleKey}`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',

@@ -1,12 +1,9 @@
 import pytest
-import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 
-client = TestClient(app)
 
-
-def test_root_endpoint():
+def test_root_endpoint(client):
     """Verify root endpoint is reachable."""
     response = client.get("/")
     assert response.status_code == 200
@@ -16,7 +13,7 @@ def test_root_endpoint():
     assert data["health_check"] == "/api/health"
 
 
-def test_health_endpoint_structure():
+def test_health_endpoint_structure(client):
     """Verify health endpoint responds with required schema fields."""
     response = client.get("/api/health")
     assert response.status_code == 200
@@ -29,8 +26,7 @@ def test_health_endpoint_structure():
     assert "python_version" in data
     assert "database" in data
     assert "connected" in data["database"]
-    assert "database" in data["database"]
-    assert data["database"]["database"] == "document_intelligence"
+    assert set(data["database"]) == {"connected", "fallback_active"}
 
 
 @pytest.mark.parametrize(
@@ -40,7 +36,7 @@ def test_health_endpoint_structure():
         "http://localhost:5173",
     ],
 )
-def test_health_endpoint_allows_frontend_origins(origin):
+def test_health_endpoint_allows_frontend_origins(client, origin):
     response = client.get(
         "/api/health",
         headers={"Origin": origin},
@@ -50,13 +46,13 @@ def test_health_endpoint_allows_frontend_origins(origin):
     assert response.headers["access-control-allow-origin"] == origin
 
 
-def test_document_upload_cors_preflight():
+def test_document_upload_cors_preflight(client):
     response = client.options(
         "/api/documents/upload",
         headers={
             "Origin": "https://documind-ai-ashy.vercel.app",
             "Access-Control-Request-Method": "POST",
-            "Access-Control-Request-Headers": "content-type",
+            "Access-Control-Request-Headers": "content-type,x-session-token",
         },
     )
 
@@ -65,11 +61,13 @@ def test_document_upload_cors_preflight():
         "https://documind-ai-ashy.vercel.app"
     )
     assert "POST" in response.headers["access-control-allow-methods"]
-    assert "content-type" in response.headers["access-control-allow-headers"]
+    allowed_headers = response.headers["access-control-allow-headers"].lower()
+    assert "content-type" in allowed_headers
+    assert "x-session-token" in allowed_headers
     assert "access-control-allow-credentials" not in response.headers
 
 
-def test_404_error_handling():
+def test_404_error_handling(client):
     """Verify 404 routes return centralized error format."""
     response = client.get("/api/non-existent-endpoint")
     assert response.status_code == 404
@@ -78,10 +76,28 @@ def test_404_error_handling():
     assert data["error"]["code"] == "NOT_FOUND"
 
 
-def test_documents_list_endpoint():
+def test_documents_list_endpoint(client):
     """Verify documents list endpoint responds without crashing."""
     response = client.get("/api/documents")
     assert response.status_code == 200
     data = response.json()
     assert "documents" in data
     assert isinstance(data["documents"], list)
+
+
+def test_documents_require_valid_session():
+    with TestClient(app) as anonymous_client:
+        response = anonymous_client.get("/api/documents")
+
+    assert response.status_code == 401
+
+
+def test_expired_session_token_is_rejected():
+    from app.sessions import AnonymousSessionManager
+
+    manager = AnonymousSessionManager()
+    manager.TOKEN_TTL_SECONDS = -1
+    token = manager.create_token()
+
+    assert manager.validate_token(token) is None
+    assert manager.validate_token("not-a-session-token") is None

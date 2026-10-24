@@ -17,9 +17,10 @@ flowchart TD
     PyMuPDF["PyMuPDF (fitz) Parsing Engine"]
     Groq["Groq Cloud LPU Accelerators (openai/gpt-oss-20b)"]
     Scoring["Deterministic Completeness Evaluator"]
-    Mongo["MongoDB 7.0 (document_intelligence.documents)"]
-    Fallback["In-Memory Dual-Persistence Fallback Cache"]
+    Mongo["Optional MongoDB (local development)"]
+    Fallback["Session-Scoped In-Memory Document Store"]
 
+    Client -->|"POST /api/session"| API
     Client -->|"POST /api/documents/upload"| API
     Client -->|"POST /api/documents/{id}/analyze"| API
     Client -->|"GET /api/documents"| API
@@ -37,15 +38,16 @@ flowchart TD
 ## 2. Backend & Frontend Communication
 
 The application decouples client presentation from server compute:
-- **CORS Middleware:** Configured with explicit origins (`http://localhost:5173`, `http://127.0.0.1:5173`, and production Vercel domains via `FRONTEND_ORIGIN`).
+- **CORS Middleware:** Configured with explicit production Vercel and local development origins; session bearer requests use the `X-Session-Token` header without cookies.
 - **RESTful Endpoints:**
+  - `POST /api/session`: Issues a short-lived, signed anonymous session token.
   - `POST /api/documents/upload`: Multipart stream receiving up to 10 MB files. Returns document metadata, page count, word count, character count, and raw text preview.
-  - `GET /api/documents`: Returns list of ingested documents with metadata and status.
-  - `GET /api/documents/{id}`: Returns complete document details including extracted text and analysis results.
-  - `DELETE /api/documents/{id}`: Idempotent deletion from database and memory cache.
-  - `POST /api/documents/{id}/analyze`: Accepts adaptive analysis parameters (`summary_style`, `analysis_level`, `selected_fields`), runs Groq inference, calculates completeness, and persists updates.
-  - `GET /api/health`: Health probe returning API status, Python runtime, MongoDB connection details, and Groq SDK telemetry.
-  - `GET /api/documents/samples/list` & `POST /api/documents/samples/load/{key}`: Instant staging of pre-built test cases (Priya Sharma, David Chen, Aisha Patel).
+  - `GET /api/documents`: Returns only the active session's documents and metadata.
+  - `GET /api/documents/{id}`: Returns document details only to its owning session.
+  - `DELETE /api/documents/{id}`: Deletes a document only for its owning session.
+  - `POST /api/documents/{id}/analyze`: Analyzes and updates a document only after an ownership check.
+  - `GET /api/health`: Health probe returning status without exposing database connection details.
+  - `GET /api/documents/samples/list` & `POST /api/documents/samples/load/{key}`: Lists public sample templates and stages a session-owned sample document.
 
 ---
 
@@ -134,13 +136,13 @@ Implemented in `backend/app/services/scoring.py`:
 
 ---
 
-## 8. Persistence & Resilient Dual-Storage
+## 8. Session-Scoped Temporary Storage
 
 Managed in `backend/app/database.py`:
-- **Target Database:** `document_intelligence`
-- **Target Collection:** `documents`
-- **Indexing:** Automated B-tree indexes created for `upload_timestamp`, `processing_status`, and `filename`.
-- **Fail-Safe Fallback Cache:** If local MongoDB is offline or in transition, the application seamlessly activates an in-memory synchronized store. Users and test suites can upload, inspect, and analyze documents immediately without hard crashes. When MongoDB becomes available, connections are automatically re-established.
+- **Anonymous Session:** The backend signs random session identifiers with a process-local HMAC key. The frontend stores the short-lived bearer token in `sessionStorage` and sends it only in the `X-Session-Token` header.
+- **Enforced Ownership:** MongoDB queries and the in-memory fallback filter documents by the authenticated session. Records without an owner, including legacy records, are inaccessible through document endpoints.
+- **Temporary Storage:** Render uses the in-memory fallback when MongoDB is unavailable. Documents and analyses can disappear on restart; no persistent database is required.
+- **Health Privacy:** Public health responses report only database connectivity and fallback status, not the URI, database name, or document count.
 
 ---
 
@@ -158,5 +160,4 @@ Built with React 18, Tailwind CSS, Lucide icons, and Recharts:
 
 - **Frontend (Vercel):** `frontend/vercel.json` configures Vite single-page application routing rewrites.
 - **Backend (Render):** `render.yaml` declares Python 3.11 environment, uvicorn execution with `$PORT`, and health check route at `/api/health`.
-- **Production Database (MongoDB Atlas):** Supported via standard `MONGODB_URI` environment variable with TLS and credentials safely abstracted from source control.
-
+- **Session Limitations:** Tokens expire after 24 hours and are invalidated by a backend restart. Session storage and documents are process-local; use one Render backend instance for consistent access.

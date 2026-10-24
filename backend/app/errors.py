@@ -87,7 +87,7 @@ def register_error_handlers(app: FastAPI) -> None:
     async def starlette_http_exception_handler(
         _: Request, exc: StarletteHTTPException
     ) -> JSONResponse:
-        logger.warning("HTTPException [%s]: %s", exc.status_code, exc.detail)
+        logger.warning("HTTPException [%s].", exc.status_code)
         code = "NOT_FOUND" if exc.status_code == 404 else "HTTP_ERROR"
         return JSONResponse(
             status_code=exc.status_code,
@@ -102,7 +102,7 @@ def register_error_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(Exception)
     async def generic_exception_handler(_: Request, exc: Exception) -> JSONResponse:
-        logger.exception("Unhandled server error: %s", exc)
+        logger.error("Unhandled server error (%s).", type(exc).__name__)
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             content={
@@ -113,4 +113,3 @@ def register_error_handlers(app: FastAPI) -> None:
                 },
             },
         )
-
